@@ -9,7 +9,10 @@
 #import "vimutils.h"
 #import "menu.h"
 
-@implementation VimView
+@implementation VimView {
+  CGSize _requestedSize;
+  BOOL _awaitingResize;
+}
 
 - (id)initWithFrame:(NSRect)frame vim:(Vim *)vim
 {
@@ -443,14 +446,27 @@
 
 - (void)requestResize:(CGSize)cellSize
 {
-    int xCells = (int)cellSize.width;
-    int yCells = (int)cellSize.height;
+    _requestedSize = cellSize;
+    if(!_awaitingResize)
+    {
+      _awaitingResize = YES;
+      dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(),
+        ^{
+          [self doResize];
+        });
+    }
+}
+
+- (void)doResize {
+    _awaitingResize = NO;
+    int xCells = (int)_requestedSize.width;
+    int yCells = (int)_requestedSize.height;
 
     if (xCells == mXCells && yCells == mYCells)
         return;
 
     if (mVim)
-        mVim->ui_try_resize((int)cellSize.width, (int)cellSize.height);
+        mVim->ui_try_resize((int)_requestedSize.width, (int)_requestedSize.height);
 }
 
 - (NSRect)resizeWindow

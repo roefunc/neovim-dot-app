@@ -194,7 +194,7 @@ NSString *menuPath(NSMenuItem *item) {
 - (void) createMenuFromVimString:(const std::string &)string {
 
     static int g_counter = 0;
-    int inst = g_counter++;
+    ++g_counter;
 
     [mPopupMenu release];
     mPopupMenu = nil;
