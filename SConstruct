@@ -20,10 +20,9 @@ env.Append(
     FRAMEWORKS=['Cocoa', 'Carbon']
 )
 
-if 0:
-    env.Append(
+env.Append(
         CCFLAGS=['-O3', '-DNDEBUG'],
-    )
+        )
 
 # Path to executable
 nvim = env['ENV'].get('NVIM')

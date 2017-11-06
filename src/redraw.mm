@@ -37,6 +37,7 @@ using msgpack::object;
         assert([NSThread isMainThread]);
 
         if (debug) std::cout << "-- " << update_o.via.array.size << "\n";
+        BOOL needsDisplay = NO;
 
         for(int i=0; i<update_o.via.array.size; i++) {
 
@@ -59,7 +60,10 @@ using msgpack::object;
                 continue;
             }
 
-            [self doAction:action->code withItem:item_o];
+            needsDisplay |= [self doAction:action->code withItem:item_o];
+        }
+        if (needsDisplay) {
+          [self setNeedsDisplay:YES];
         }
     }
     catch(std::exception &e) {
@@ -74,10 +78,11 @@ using msgpack::object;
     }
 }
 
-- (void) doAction:(RedrawCode::Enum)code withItem:(const object &)item_o
+- (BOOL) doAction:(RedrawCode::Enum)code withItem:(const object &)item_o
 {
     int item_sz = item_o.via.array.size;
     object *arglists = item_o.via.array.ptr + 1;
+    BOOL needsDisplay = NO;
 
     if (code == RedrawCode::put) {
         /*
@@ -157,19 +162,21 @@ using msgpack::object;
         mCursorPos.x += width;
 
         CGContextRestoreGState(mCanvasContext);
-        [self setNeedsDisplay:YES];
+        needsDisplay = YES;
     }
     else for (int i = 0; i < item_sz - 1; i++) {
         const object &arglist = arglists[i];
-        [self doAction:code withArgc:arglist.via.array.size argv:arglist.via.array.ptr];
+        needsDisplay |= [self doAction:code withArgc:arglist.via.array.size argv:arglist.via.array.ptr];
     }
 
     if (mCursorOn)
         mCursorDisplayPos = mCursorPos;
+    return needsDisplay;
 }
 
-- (void) doAction:(RedrawCode::Enum)code withArgc:(int)argc argv:(const object *)argv
+- (BOOL) doAction:(RedrawCode::Enum)code withArgc:(int)argc argv:(const object *)argv
 {
+    BOOL needsDisplay = NO;
     NSRect viewFrame = [self frame];
 
     switch(code)
@@ -198,7 +205,7 @@ using msgpack::object;
         {
             mCursorOn = true;
             mCursorDisplayPos = mCursorPos;
-            [self setNeedsDisplay:YES];
+            needsDisplay = YES;
             break;
         }
 
@@ -215,7 +222,7 @@ using msgpack::object;
 
             if (mCursorOn) {
                 mCursorDisplayPos = mCursorPos;
-                [self setNeedsDisplay:YES];
+                needsDisplay = YES;
             }
 
             break;
@@ -238,7 +245,7 @@ using msgpack::object;
             [mBackgroundColor set];
             NSRectFill(viewFrame);
 
-            [self setNeedsDisplay:YES];
+            needsDisplay = YES;
             break;
         }
 
@@ -253,7 +260,7 @@ using msgpack::object;
             [mBackgroundColor set];
             NSRectFill(rect);
 
-            [self setNeedsDisplay:YES];
+            needsDisplay = YES;
             break;
         }
 
@@ -272,10 +279,10 @@ using msgpack::object;
 
             mReverseVideo = false;
 
-            for(auto iter = attrs.begin(); iter != attrs.end(); ++iter)
+            for(auto& iter : attrs)
             {
-                std::string attr    = iter->first;
-                msgpack::object val = iter->second;
+                const std::string& attr    = iter.first;
+                const msgpack::object& val = iter.second;
 
                 if (attr == "foreground")
                     fgcolor = NSColorFromRGB(val.convert());
@@ -360,7 +367,7 @@ using msgpack::object;
                 NSRectFill(dest);
             }
 
-            [self setNeedsDisplay:YES];
+            needsDisplay = YES;
             break;
         }
 
@@ -371,7 +378,7 @@ using msgpack::object;
             mCellScrollRect = CGRectMake(0, 0, mXCells, mYCells);
 
             [self resizeWindow];
-            [self setNeedsDisplay:YES];
+            needsDisplay = YES;
             break;
         }
 
@@ -379,7 +386,7 @@ using msgpack::object;
         {
             std::string mode = argv[0].convert();
             mInsertMode = (mode == "insert");
-            [self setNeedsDisplay:YES];
+            needsDisplay = YES;
             break;
         }
 
@@ -402,6 +409,7 @@ using msgpack::object;
             break;
         }
     }
+    return needsDisplay;
 }
 
 @end
